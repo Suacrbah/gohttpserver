@@ -33,3 +33,4 @@ assets_vfsdata.go
 dist/
 files/private/*
 files/public/*
+log/
