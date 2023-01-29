@@ -1,3 +1,4 @@
 upload: true
 create: true
-delete: false
+delete: true
+port: 8000

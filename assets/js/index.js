@@ -269,7 +269,7 @@ var vm = new Vue({
       })
     },
     makeDirectory: function () {
-      var name = window.prompt("current path: " + location.pathname + "\nplease enter the new directory name", "")
+      var name = window.prompt("\n请输入新建文件夹名", "")
       console.log(name)
       if (!name) {
         return
@@ -293,7 +293,7 @@ var vm = new Vue({
     deletePathConfirm: function (f, e) {
       e.preventDefault();
       if (!e.altKey) { // skip confirm when alt pressed
-        if (!window.confirm("Delete " + f.name + " ?")) {
+        if (!window.confirm("确定删除 " + f.name + " 吗?")) {
           return;
         }
       }

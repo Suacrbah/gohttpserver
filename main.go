@@ -37,6 +37,7 @@ type Configure struct {
 	Theme           string   `yaml:"theme"`
 	XHeaders        bool     `yaml:"xheaders"`
 	Upload          bool     `yaml:"upload"`
+	Create          bool     `yaml:"create"`
 	Delete          bool     `yaml:"delete"`
 	PlistProxy      string   `yaml:"plistproxy"`
 	Title           string   `yaml:"title"`
@@ -114,6 +115,7 @@ func parseFlags() error {
 	kingpin.Flag("auth-openid", "OpenID auth identity url").StringVar(&gcfg.Auth.OpenID)
 	kingpin.Flag("theme", "web theme, one of <black|green>").StringVar(&gcfg.Theme)
 	kingpin.Flag("upload", "enable upload support").BoolVar(&gcfg.Upload)
+	kingpin.Flag("create", "enable create support").BoolVar(&gcfg.Create)
 	kingpin.Flag("delete", "enable delete support").BoolVar(&gcfg.Delete)
 	kingpin.Flag("xheaders", "used when behide nginx").BoolVar(&gcfg.XHeaders)
 	kingpin.Flag("cors", "enable cross-site HTTP request").BoolVar(&gcfg.Cors)
@@ -170,6 +172,7 @@ func main() {
 	ss.Title = gcfg.Title
 	ss.GoogleTrackerID = gcfg.GoogleTrackerID
 	ss.Upload = gcfg.Upload
+	ss.Create = gcfg.Create
 	ss.Delete = gcfg.Delete
 	ss.AuthType = gcfg.Auth.Type
 

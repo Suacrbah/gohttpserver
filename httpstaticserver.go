@@ -51,6 +51,7 @@ type HTTPStaticServer struct {
 	Root            string
 	Prefix          string
 	Upload          bool
+	Create          bool
 	Delete          bool
 	Title           string
 	Theme           string
@@ -200,6 +201,10 @@ func (s *HTTPStaticServer) hUploadOrMkdir(w http.ResponseWriter, req *http.Reque
 	file, header, err := req.FormFile("file")
 
 	if _, err := os.Stat(dirpath); os.IsNotExist(err) {
+		if !auth.canCreate(req) {
+			http.Error(w, "Create forbidden", http.StatusForbidden)
+			return
+		}
 		if err := os.MkdirAll(dirpath, os.ModePerm); err != nil {
 			log.Println("Create directory:", err)
 			http.Error(w, "Directory create "+err.Error(), http.StatusInternalServerError)
@@ -483,12 +488,14 @@ type UserControl struct {
 	Email string
 	// Access bool
 	Upload bool
+	Create bool
 	Delete bool
 	Token  string
 }
 
 type AccessConf struct {
 	Upload       bool          `yaml:"upload" json:"upload"`
+	Create       bool          `yaml:"create" json:"create"`
 	Delete       bool          `yaml:"delete" json:"delete"`
 	Users        []UserControl `yaml:"users" json:"users"`
 	AccessTables []AccessTable `yaml:"accessTables"`
@@ -564,12 +571,31 @@ func (c *AccessConf) canUpload(r *http.Request) bool {
 	return c.Upload
 }
 
+func (c *AccessConf) canCreate(r *http.Request) bool {
+	session, err := store.Get(r, defaultSessionName)
+	if err != nil {
+		return c.Create
+	}
+	val := session.Values["user"]
+	if val == nil {
+		return c.Create
+	}
+	userInfo := val.(*UserInfo)
+	for _, rule := range c.Users {
+		if rule.Email == userInfo.Email {
+			return rule.Create
+		}
+	}
+	return c.Create
+}
+
 func (s *HTTPStaticServer) hJSONList(w http.ResponseWriter, r *http.Request) {
 	requestPath := mux.Vars(r)["path"]
 	realPath := s.getRealPath(r)
 	search := r.FormValue("search")
 	auth := s.readAccessConf(realPath)
 	auth.Upload = auth.canUpload(r)
+	auth.Create = auth.canCreate(r)
 	auth.Delete = auth.canDelete(r)
 
 	// path string -> info os.FileInfo
@@ -709,6 +735,7 @@ func (s *HTTPStaticServer) findIndex(text string) []IndexFileItem {
 func (s *HTTPStaticServer) defaultAccessConf() AccessConf {
 	return AccessConf{
 		Upload: s.Upload,
+		Create: s.Create,
 		Delete: s.Delete,
 	}
 }
