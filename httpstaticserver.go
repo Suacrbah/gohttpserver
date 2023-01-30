@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -92,7 +94,7 @@ func NewHTTPStaticServer(root string) *HTTPStaticServer {
 			s.makeIndex()
 			log.Printf("Completed search index in %v", time.Since(startTime))
 			//time.Sleep(time.Second * 1)
-			time.Sleep(time.Minute * 10)
+			time.Sleep(time.Minute * 20)
 		}
 	}()
 
@@ -203,6 +205,10 @@ func (s *HTTPStaticServer) hUploadOrMkdir(w http.ResponseWriter, req *http.Reque
 	if _, err := os.Stat(dirpath); os.IsNotExist(err) {
 		if !auth.canCreate(req) {
 			http.Error(w, "Create forbidden", http.StatusForbidden)
+			return
+		}
+		if err := checkFoldername(dirpath); err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		}
 		if err := os.MkdirAll(dirpath, os.ModePerm); err != nil {
@@ -832,9 +838,51 @@ func renderHTML(w http.ResponseWriter, name string, v interface{}) {
 	t.Execute(w, v)
 }
 
+func readSensitiveWords() []string {
+	var sensitiveWords []string
+	fi, err := os.Open("files/confs/sensitive.txt")
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		return sensitiveWords
+	}
+	defer fi.Close()
+
+	br := bufio.NewReader(fi)
+	for {
+		line, _, c := br.ReadLine()
+		if c == io.EOF {
+			break
+		}
+		word, err := base64.StdEncoding.DecodeString(string(line))
+		if err != nil {
+			fmt.Printf("Error: %s\n", err)
+			continue
+		}
+		sensitiveWords = append(sensitiveWords, string(word))
+	}
+	return sensitiveWords
+}
+
+func checkSensitive(name string) bool {
+	sensitiveWords := readSensitiveWords()
+	for _, words := range sensitiveWords {
+		if strings.Contains(name, words) {
+			return true
+		}
+	}
+	return false
+}
+
 func checkFilename(name string) error {
-	if strings.ContainsAny(name, "\\/:*<>|") {
-		return errors.New("Name should not contains \\/:*<>|")
+	if strings.ContainsAny(name, "\\/:*<>|") || checkSensitive(name) {
+		return errors.New("Name is not valid")
+	}
+	return nil
+}
+
+func checkFoldername(name string) error {
+	if checkSensitive(name) {
+		return errors.New("Name is not valid")
 	}
 	return nil
 }
