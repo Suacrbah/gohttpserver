@@ -227,6 +227,12 @@ func (s *HTTPStaticServer) hUploadOrMkdir(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
+	if header.Size > 100*1000000 { // file size should be no more than 100MB
+		log.Println("file too big!!!")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if err != nil {
 		log.Println("Parse form file:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -842,7 +848,7 @@ func readSensitiveWords() []string {
 	var sensitiveWords []string
 	fi, err := os.Open("files/confs/sensitive.txt")
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		log.Printf("Error: %s\n", err)
 		return sensitiveWords
 	}
 	defer fi.Close()
@@ -855,7 +861,7 @@ func readSensitiveWords() []string {
 		}
 		word, err := base64.StdEncoding.DecodeString(string(line))
 		if err != nil {
-			fmt.Printf("Error: %s\n", err)
+			log.Printf("Error: %s\n", err)
 			continue
 		}
 		sensitiveWords = append(sensitiveWords, string(word))
