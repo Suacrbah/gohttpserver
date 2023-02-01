@@ -43,6 +43,7 @@ var vm = new Vue({
       email: "",
       name: "",
     },
+    totalSize: "",
     location: window.location,
     breadcrumb: [],
     showHidden: false,
@@ -124,6 +125,16 @@ var vm = new Vue({
         }
       }.bind(this)
     })
+    $.ajax({
+      url: "/size",
+      method: "get",
+      dataType: "json",
+      success: function (ret) {
+        if (ret) {
+          this.totalSize = ret.totalSize;
+        }
+      }.bind(this)
+    })
     this.myDropzone = new Dropzone("#upload-form", {
       paramName: "file",
       maxFilesize: 10240,
@@ -142,6 +153,9 @@ var vm = new Vue({
   methods: {
     getEncodePath: function (filepath) {
       return pathJoin([location.pathname].concat(filepath.split("/").map(v => encodeURIComponent(v))))
+    },
+    getCurrentSize: function() {
+      return 10
     },
     formatTime: function (timestamp) {
       var m = moment(timestamp);

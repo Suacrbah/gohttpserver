@@ -127,9 +127,33 @@ func (s *HTTPStaticServer) getRealPath(r *http.Request) string {
 	return filepath.ToSlash(realPath)
 }
 
+func dirSize() float64 {
+	var size float64
+	_ = filepath.Walk("files", func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += float64(info.Size())
+		}
+		return err
+	})
+	size = size / 1024.0 / 1024.0 / 1024.0
+	return size
+}
+
 func (s *HTTPStaticServer) hIndex(w http.ResponseWriter, r *http.Request) {
 	path := mux.Vars(r)["path"]
 	realPath := s.getRealPath(r)
+
+	if realPath == "files/public/size" { // Calculating current total size
+		data, _ := json.Marshal(map[string]interface{}{
+			"totalSize": fmt.Sprintf("%.2f", dirSize()),
+		})
+		w.Write(data)
+		return
+	}
+
 	if r.FormValue("json") == "true" {
 		s.hJSONList(w, r)
 		return
@@ -227,9 +251,15 @@ func (s *HTTPStaticServer) hUploadOrMkdir(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
+	if dirSize() > 40.0 {
+		log.Println("Exceeded size limit!")
+		http.Error(w, "总文件大小大于40G，无法上传", http.StatusInternalServerError)
+		return
+	}
+
 	if header.Size > 100*1000000 { // file size should be no more than 100MB
 		log.Println("file too big!!!")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "文件不可超过100MB", http.StatusInternalServerError)
 		return
 	}
 
@@ -238,6 +268,7 @@ func (s *HTTPStaticServer) hUploadOrMkdir(w http.ResponseWriter, req *http.Reque
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	defer func() {
 		file.Close()
 		req.MultipartForm.RemoveAll() // Seen from go source code, req.MultipartForm not nil after call FormFile(..)
@@ -881,14 +912,14 @@ func checkSensitive(name string) bool {
 
 func checkFilename(name string) error {
 	if strings.ContainsAny(name, "\\/:*<>|") || checkSensitive(name) {
-		return errors.New("Name is not valid")
+		return errors.New("文件名不合法")
 	}
 	return nil
 }
 
 func checkFoldername(name string) error {
 	if checkSensitive(name) {
-		return errors.New("Name is not valid")
+		return errors.New("文件夹名称不合法")
 	}
 	return nil
 }

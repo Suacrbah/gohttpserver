@@ -87,6 +87,7 @@
         <li v-if="breadcrumb.length >= 1">
           {{breadcrumb.slice(-1)[0].name}}
         </li>
+        <li v-on style="float: right;">{{totalSize}}G / 40G</li>
       </ol>
       <table class="table table-hover" v-if="!previewMode">
         <thead>
